@@ -1,0 +1,14 @@
+{
+  "title": "Mapa de arquitectura tecnológica de MiSistema",
+  "doc_code": "ARQ-MIS-001",
+  "doc_type": "Documento de arquitectura",
+  "form_code": "ARQ-001",
+  "version": "1.0",
+  "security_level": "Restringido",
+  "direction": "Dirección Nacional de Tecnologías de la Información",
+  "subdirection": "Subdirección Nacional de Arquitectura y Soluciones",
+  "date": "20/08/2026",
+  "copyright_year": "2026",
+  "include_risks": true,
+  "include_indicators": false
+}

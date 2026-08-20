@@ -1,0 +1,13 @@
+# Salidas y temporales del generador
+salida/
+*.docx
+*-intermedio/
+tmp/
+
+# Credenciales locales de gpush/GitHub
+.gpusher_token
+.env
+
+# Archivos de sistema
+Thumbs.db
+desktop.ini
