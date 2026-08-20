@@ -1,6 +1,7 @@
 # Salidas y temporales del generador
 salida/
 *.docx
+!DocumentaciónIESS/referencia_estilo_iess.docx
 *-intermedio/
 tmp/
 
