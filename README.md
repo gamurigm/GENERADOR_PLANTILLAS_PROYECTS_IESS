@@ -1,4 +1,16 @@
-# Generador DOCX IESS desde Markdown
+# Generador de documentación y DOCX IESS
+
+El proyecto ofrece dos fases: preparar documentación de un proyecto externo y convertir el Markdown revisado a DOCX institucional.
+
+## Flujo recomendado
+
+1. Analizar el directorio del proyecto con `tools/analizador-proyecto-iess/analizar_proyecto_iess.ps1`.
+2. Entregar `prompt-generar-documentacion.md` y la información permitida del proyecto a la IA.
+3. Guardar el resultado como `documentacion.md` y revisarlo manualmente.
+4. Validarlo con `validar_markdown_iess.ps1`.
+5. Convertirlo a DOCX con el generador existente.
+
+El analizador no envía información a ninguna IA por sí mismo. Produce un inventario y un prompt para que el usuario controle qué contenido comparte.
 
 Convierte un archivo `.md` de cualquier proyecto en un `.docx` basado en la plantilla general IESS.
 

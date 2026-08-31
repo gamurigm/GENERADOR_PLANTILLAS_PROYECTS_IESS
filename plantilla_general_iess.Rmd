@@ -1,0 +1,363 @@
+---
+title: "[TÍTULO DEL DOCUMENTO]"
+doc_code: "[CÓDIGO DOCUMENTAL]"
+doc_type: "[TIPO DE DOCUMENTO]"
+form_code: "[CÓDIGO DEL FORMULARIO]"
+version: "[VERSIÓN]"
+security_level: "[NIVEL DE SEGURIDAD]"
+institution: "INSTITUTO ECUATORIANO DE SEGURIDAD SOCIAL"
+direction: "[DIRECCIÓN / UNIDAD RESPONSABLE]"
+subdirection: "[SUBDIRECCIÓN / ÁREA RESPONSABLE]"
+date: "[DD/MM/AAAA]"
+copyright_year: "[AÑO]"
+include_toc: true
+include_definitions: true
+include_background: true
+include_purpose: true
+include_responsibilities: true
+include_legal_framework: true
+include_risks: false
+include_indicators: false
+include_conclusions: true
+include_recommendations: true
+include_references: true
+include_annexes: true
+firmas:
+  elaborado:
+    - nombre: "[NOMBRE COMPLETO]"
+      cargo: "[CARGO - UNIDAD]"
+      fecha: "[DD/MM/AAAA]"
+      firma: "[FIRMA / VALIDACIÓN ELECTRÓNICA]"
+  colaborado:
+    - nombre: "[NOMBRE COMPLETO]"
+      cargo: "[CARGO - UNIDAD]"
+      fecha: "[DD/MM/AAAA]"
+      firma: "[FIRMA / VALIDACIÓN ELECTRÓNICA]"
+  revisado:
+    - nombre: "[NOMBRE COMPLETO]"
+      cargo: "[CARGO - UNIDAD]"
+      fecha: "[DD/MM/AAAA]"
+      firma: "[FIRMA / VALIDACIÓN ELECTRÓNICA]"
+  aprobado:
+    - nombre: "[NOMBRE COMPLETO]"
+      cargo: "[CARGO - UNIDAD]"
+      fecha: "[DD/MM/AAAA]"
+      firma: "[FIRMA / VALIDACIÓN ELECTRÓNICA]"
+control_cambios:
+  - version: "[VERSIÓN]"
+    fecha: "[DD/MM/AAAA]"
+    autor: "[AUTOR / EQUIPO]"
+    descripcion: "[DESCRIPCIÓN DEL CAMBIO]"
+output:
+  officedown::rdocx_document:
+    toc: false
+    toc_depth: 4
+    number_sections: false
+    reference_docx: "referencia_estilo_iess.docx"
+    tables:
+      style: "Table Grid"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(officedown)
+library(officer)
+library(flextable)
+library(magrittr)
+
+meta <- rmarkdown::metadata
+
+estilo_iess <- function(ft, header_fill = "#003366") {
+  ft <- ft %>%
+    theme_box() %>%
+    bg(part = "header", bg = header_fill) %>%
+    color(part = "header", color = "#FFFFFF") %>%
+    bold(part = "header", bold = TRUE) %>%
+    fontsize(size = 9, part = "all") %>%
+    font(fontname = "Calibri", part = "all") %>%
+    align(align = "left", part = "all") %>%
+    valign(valign = "center", part = "all") %>%
+    autofit()
+  ft
+}
+
+valor <- function(x, defecto = "[PENDIENTE DE COMPLETAR]") {
+  if (is.null(x) || length(x) == 0 || is.na(x) || !nzchar(trimws(as.character(x)))) defecto else as.character(x)
+}
+
+tabla_firmas <- function(firmas) {
+  roles <- list(
+    elaborado = "ELABORADO POR",
+    colaborado = "COLABORADO POR",
+    revisado = "REVISADO POR",
+    aprobado = "APROBADO POR"
+  )
+  filas <- list()
+  for (rol in names(roles)) {
+    personas <- firmas[[rol]]
+    if (is.null(personas) || length(personas) == 0) next
+    for (persona in personas) {
+      filas[[length(filas) + 1]] <- data.frame(
+        Rol = roles[[rol]],
+        Nombre = valor(persona$nombre),
+        `Cargo - Unidad` = valor(persona$cargo),
+        Fecha = valor(persona$fecha),
+        Firma = valor(persona$firma),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  do.call(rbind, filas)
+}
+```
+
+<!-- PORTADA -->
+
+```{r portada, results='asis'}
+cat("")
+```
+
+<br><br><br>
+
+<div align="center">
+
+**`r valor(meta$doc_type)`**
+
+**Versión `r valor(meta$version)` · `r valor(meta$doc_code)`**
+
+</div>
+
+<br><br><br><br>
+
+---
+
+**`r valor(meta$institution)`**  
+**`r valor(meta$direction)`**  
+**`r valor(meta$subdirection)`**  
+**Código de formulario:** `r valor(meta$form_code)`  
+**Nivel de seguridad:** `r valor(meta$security_level)`  
+**Fecha:** `r valor(meta$date)`
+
+**© `r valor(meta$copyright_year)` `r valor(meta$direction)`**  
+**TODOS LOS DERECHOS RESERVADOS**
+
+Este documento es propiedad del Instituto Ecuatoriano de Seguridad Social. Su reproducción, distribución o modificación deberá realizarse de acuerdo con las autorizaciones y controles institucionales aplicables.
+
+\newpage
+
+# FIRMAS Y APROBACIONES {.unlisted .unnumbered}
+
+```{r firmas}
+df_firmas <- tabla_firmas(meta$firmas)
+flextable(df_firmas) %>%
+  set_header_labels(Rol = "Rol", Nombre = "Nombre", `Cargo - Unidad` = "Cargo - Unidad", Fecha = "Fecha", Firma = "Firma") %>%
+  estilo_iess() %>%
+  set_table_properties(layout = "fixed", width = 1) %>%
+  width(j = 1, width = 1.05) %>%
+  width(j = 2, width = 1.55) %>%
+  width(j = 3, width = 1.25) %>%
+  width(j = 4, width = 0.9) %>%
+  width(j = 5, width = 1.6)
+```
+
+# CONTROL DE CAMBIOS {.unlisted .unnumbered}
+
+```{r control-cambios}
+df_cambios <- as.data.frame(do.call(rbind, lapply(meta$control_cambios, function(x) as.data.frame(x, stringsAsFactors = FALSE))))
+names(df_cambios) <- c("Versión", "Fecha", "Autor", "Descripción")
+flextable(df_cambios) %>%
+  estilo_iess() %>%
+  set_table_properties(layout = "fixed", width = 1) %>%
+  width(j = 1, width = 0.85) %>%
+  width(j = 2, width = 0.9) %>%
+  width(j = 3, width = 1.9) %>%
+  width(j = 4, width = 2.7)
+```
+
+\newpage
+
+```{r indice, results='asis'}
+if (isTRUE(meta$include_toc)) cat("# TABLA DE CONTENIDOS {.unlisted .unnumbered}\n\n")
+```
+
+```{r toc, results='asis'}
+if (isTRUE(meta$include_toc)) officer::block_toc(level = 1)
+```
+
+```{r salto-cuerpo, results='asis'}
+cat("\\newpage")
+```
+
+# 1. ANTECEDENTES
+
+```{r antecedentes, results='asis'}
+if (isTRUE(meta$include_background)) cat("[Describa el contexto, origen, necesidad o situacion que motiva el documento.]\n\n") else cat("<!-- Seccion opcional desactivada. Cambie include_background a true para incluirla. -->")
+```
+
+# 2. PROPÓSITO
+
+```{r proposito, results='asis'}
+if (isTRUE(meta$include_purpose)) cat("[Explique para que existe este documento y que resultado institucional busca producir.]\n\n") else cat("<!-- Seccion opcional desactivada. Cambie include_purpose a true para incluirla. -->")
+```
+
+# 3. OBJETIVO
+
+[Redacte el resultado principal que se pretende alcanzar.]
+
+## 3.1 Objetivos específicos
+
+- [Objetivo específico 1]
+- [Objetivo específico 2]
+- [Objetivo específico 3]
+
+# 4. ALCANCE
+
+## 4.1 Incluye
+
+- [Procesos, áreas, sistemas, personas o actividades incluidas]
+
+## 4.2 No incluye
+
+- [Procesos, áreas, sistemas, personas o actividades excluidas]
+
+```{r heading-definiciones, results='asis'}
+if (isTRUE(meta$include_definitions)) cat("# 5. DEFINICIONES, ABREVIATURAS Y ACRÓNIMOS\n\n")
+```
+
+```{r definiciones}
+if (isTRUE(meta$include_definitions)) {
+  glosario <- data.frame(
+    `Término / Acrónimo` = c("[TÉRMINO]", "[ACRÓNIMO]"),
+    `Definición` = c("[Definición del término]", "[Significado del acrónimo]"),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  flextable(glosario) %>% estilo_iess()
+}
+```
+
+```{r heading-responsables, results='asis'}
+if (isTRUE(meta$include_responsibilities)) cat("# 6. RESPONSABLES Y PARTES INTERESADAS\n\n")
+```
+
+```{r responsables}
+if (isTRUE(meta$include_responsibilities)) {
+  responsables <- data.frame(
+    Rol = c("[RESPONSABLE PRINCIPAL]", "[PARTE INTERESADA]"),
+    `Nombre / Unidad` = c("[Nombre o unidad]", "[Nombre o unidad]"),
+    Responsabilidad = c("[Responsabilidad]", "[Interés, participación o dependencia]"),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  flextable(responsables) %>% estilo_iess()
+}
+```
+
+```{r heading-marco, results='asis'}
+if (isTRUE(meta$include_legal_framework)) cat("# 7. MARCO NORMATIVO Y DOCUMENTAL\n\n")
+```
+
+```{r marco-normativo, results='asis'}
+if (isTRUE(meta$include_legal_framework)) cat("[Enumere leyes, reglamentos, politicas, normas, disposiciones o documentos institucionales relacionados.]\n\n") else cat("<!-- Seccion opcional desactivada. Cambie include_legal_framework a true para incluirla. -->")
+```
+
+# 8. DESARROLLO DEL DOCUMENTO
+
+## 8.1 [Título de la primera sección]
+
+[Desarrolle aquí el contenido principal. Puede utilizar texto, listas, tablas, imágenes, diagramas, procedimientos o matrices.]
+
+## 8.2 [Título de la segunda sección]
+
+[Agregue o elimine subsecciones según el tipo de documento.]
+
+### 8.2.1 [Subsección opcional]
+
+[Contenido de la subsección.]
+
+## 8.3 Tabla o matriz editable
+
+```{r tabla-generica}
+matriz <- data.frame(
+  Elemento = c("[Elemento 1]", "[Elemento 2]"),
+    `Descripción` = c("[Descripción]", "[Descripción]"),
+  Responsable = c("[Responsable]", "[Responsable]"),
+  Estado = c("[Estado]", "[Estado]"),
+  stringsAsFactors = FALSE
+)
+flextable(matriz) %>% estilo_iess()
+```
+
+## 8.4 Procedimiento o actividades
+
+1. [Actividad o paso 1]
+2. [Actividad o paso 2]
+3. [Actividad o paso 3]
+
+```{r heading-riesgos, results='asis'}
+if (isTRUE(meta$include_risks)) cat("# 9. RIESGOS, RESTRICCIONES Y DEPENDENCIAS\n\n")
+```
+
+```{r riesgos}
+if (isTRUE(meta$include_risks)) {
+  riesgos <- data.frame(
+    Riesgo = c("[Riesgo]"),
+    Impacto = c("[Alto / Medio / Bajo]"),
+    `Mitigación` = c("[Acción de mitigación]"),
+    Responsable = c("[Responsable]"),
+    stringsAsFactors = FALSE
+  )
+  flextable(riesgos) %>% estilo_iess()
+}
+```
+
+```{r heading-indicadores, results='asis'}
+if (isTRUE(meta$include_indicators)) cat("# 10. INDICADORES Y CRITERIOS DE CUMPLIMIENTO\n\n")
+```
+
+```{r indicadores}
+if (isTRUE(meta$include_indicators)) {
+  indicadores <- data.frame(
+    Indicador = c("[Indicador]"),
+    `Fórmula` = c("[Fórmula o método]"),
+    Meta = c("[Meta]"),
+    `Frecuencia` = c("[Frecuencia]"),
+    Responsable = c("[Responsable]"),
+    stringsAsFactors = FALSE
+  )
+  flextable(indicadores) %>% estilo_iess()
+}
+```
+
+```{r heading-conclusiones, results='asis'}
+if (isTRUE(meta$include_conclusions)) cat("# 11. CONCLUSIONES\n\n")
+```
+
+```{r conclusiones, results='asis'}
+if (isTRUE(meta$include_conclusions)) cat("[Resuma los resultados, decisiones o hallazgos principales.]\n\n") else cat("<!-- Seccion opcional desactivada. Cambie include_conclusions a true para incluirla. -->")
+```
+
+```{r heading-recomendaciones, results='asis'}
+if (isTRUE(meta$include_recommendations)) cat("# 12. RECOMENDACIONES\n\n")
+```
+
+```{r recomendaciones, results='asis'}
+if (isTRUE(meta$include_recommendations)) cat("- [Recomendacion 1]\n- [Recomendacion 2]\n") else cat("<!-- Seccion opcional desactivada. Cambie include_recommendations a true para incluirla. -->")
+```
+
+```{r heading-referencias, results='asis'}
+if (isTRUE(meta$include_references)) cat("# 13. REFERENCIAS\n\n")
+```
+
+```{r referencias, results='asis'}
+if (isTRUE(meta$include_references)) cat("1. [Autor o institucion]. ([Ano]). [Titulo del documento o fuente].\n2. [Autor o institucion]. ([Ano]). [Titulo del documento o fuente].\n") else cat("<!-- Seccion opcional desactivada. Cambie include_references a true para incluirla. -->")
+```
+
+```{r heading-anexos, results='asis'}
+if (isTRUE(meta$include_annexes)) cat("# 14. ANEXOS\n\n")
+```
+
+```{r anexos, results='asis'}
+if (isTRUE(meta$include_annexes)) cat("[Incluya aqui anexos, formatos, diagramas, evidencias o informacion complementaria.]\n\n") else cat("<!-- Seccion opcional desactivada. Cambie include_annexes a true para incluirla. -->")
+```

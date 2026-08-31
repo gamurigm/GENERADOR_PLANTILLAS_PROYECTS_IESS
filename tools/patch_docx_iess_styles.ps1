@@ -32,6 +32,9 @@ try {
             if ($pair.Key -eq 'Titre') {
                 $block = [regex]::Replace($block, '<w:pBdr>[\s\S]*?</w:pBdr>', '')
             }
+            if ($pair.Key -in @('Titre1','Titre2','Titre3')) {
+                $block = [regex]::Replace($block, '<w:numPr>[\s\S]*?</w:numPr>', '')
+            }
             $block
         }, 1)
     }

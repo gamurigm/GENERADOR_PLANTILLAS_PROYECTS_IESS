@@ -14,12 +14,8 @@ $ErrorActionPreference = 'Stop'
 
 $toolDir = Split-Path -Parent $PSScriptRoot
 $repoRoot = Split-Path -Parent $toolDir
-$docDir = Get-ChildItem -LiteralPath $repoRoot -Directory | Where-Object {
-    Test-Path -LiteralPath (Join-Path $_.FullName 'plantilla_general_iess.Rmd')
-} | Select-Object -First 1 -ExpandProperty FullName
-if (-not $docDir) { throw 'No se encontró la carpeta que contiene plantilla_general_iess.Rmd.' }
-$templateRmd = Join-Path $docDir 'plantilla_general_iess.Rmd'
-$referenceDocx = Join-Path $docDir 'referencia_estilo_iess.docx'
+$templateRmd = Join-Path $repoRoot 'plantilla_general_iess.Rmd'
+$referenceDocx = Join-Path $repoRoot 'referencia_estilo_iess.docx'
 $patcher = Join-Path $toolDir 'patch_docx_iess_styles.ps1'
 
 if (-not (Test-Path -LiteralPath $templateRmd)) { throw "No se encontró la plantilla RMarkdown: $templateRmd" }
@@ -58,6 +54,26 @@ function Set-YamlScalar {
     }, 1)
 }
 
+function ConvertTo-YamlQuoted {
+    param([object]$Value)
+    if ($null -eq $Value) { return '""' }
+    return '"' + ([string]$Value).Replace('\', '\\').Replace('"', '\"').Replace("`r", '').Replace("`n", ' ') + '"'
+}
+
+function Set-YamlBlock {
+    param([string]$Text, [string]$StartKey, [string]$NextKey, [string[]]$Lines)
+    if (-not $Lines -or $Lines.Count -eq 0) { return $Text }
+    $pattern = '(?ms)^' + [regex]::Escape($StartKey) + ':\r?\n.*?(?=^' + [regex]::Escape($NextKey) + ':)'
+    $replacement = ($Lines -join "`r`n") + "`r`n"
+    return [regex]::Replace($Text, $pattern, { param($match) $replacement }, 1)
+}
+
+function Get-MetadataProperty {
+    param([object]$Object, [string]$Name)
+    if ($null -eq $Object -or -not ($Object.PSObject.Properties.Name -contains $Name)) { return $null }
+    return $Object.$Name
+}
+
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('iess-md-render-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temp | Out-Null
 $originalLocation = (Get-Location).Path
@@ -71,8 +87,22 @@ try {
     $body = [regex]::Replace($body, '(?s)^---\r?\n.*?\r?\n---\r?\n', '')
     $body = $body.Trim()
     if (-not $body) { throw 'El Markdown de entrada está vacío después de retirar el front matter.' }
+    # La numeración institucional admite como máximo cuatro niveles (1.2.3.4).
+    # Se normalizan encabezados Markdown más profundos antes de renderizar.
+    $body = [regex]::Replace($body, '(?m)^(#{5,})(?=\s)', '####')
 
     $rmd = Get-Content -Raw -Encoding utf8 -LiteralPath (Join-Path $temp 'plantilla_general_iess.Rmd')
+    $fullBodyHandled = $false
+    if ($body -match '(?m)^# 1\. ANTECEDENTES\s*$') {
+        $fullBodyPattern = '(?s)# 1\. ANTECEDENTES.*$'
+        if (-not [regex]::IsMatch($rmd, $fullBodyPattern)) {
+            throw 'No se encontro el inicio del cuerpo institucional en la plantilla general.'
+        }
+        $rmd = [regex]::Replace($rmd, $fullBodyPattern, { param($match) $body + "`r`n" }, 1)
+        $fullBodyHandled = $true
+    }
+
+    if (-not $fullBodyHandled) {
     $bodySection = "# 8. DESARROLLO DEL DOCUMENTO`r`n`r`n" + $body + "`r`n`r`n"
     $bodyPattern = '(?s)# 8\. DESARROLLO DEL DOCUMENTO.*?(```\{r heading-riesgos)'
     if (-not [regex]::IsMatch($rmd, $bodyPattern)) {
@@ -82,6 +112,7 @@ try {
         param($match)
         $bodySection + $match.Groups[1].Value
     }, 1)
+    }
 
     if ($metadata) {
         $scalarKeys = @('title','doc_code','doc_type','form_code','version','security_level','institution','direction','subdirection','date','copyright_year')
@@ -94,6 +125,33 @@ try {
             if ($metadata.PSObject.Properties.Name -contains $key) {
                 $rmd = Set-YamlScalar -Text $rmd -Key $key -Value $metadata.$key -Boolean
             }
+        }
+        if ($metadata.PSObject.Properties.Name -contains 'firmas') {
+            $signatureLines = @('firmas:')
+            foreach ($role in @('elaborado','colaborado','revisado','aprobado')) {
+                $people = @(Get-MetadataProperty -Object $metadata.firmas -Name $role)
+                $people = @($people | Where-Object { $null -ne $_ })
+                if ($people.Count -eq 0) { continue }
+                $signatureLines += "  ${role}:"
+                foreach ($person in $people) {
+                    $signatureLines += '    - nombre: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $person 'nombre'))
+                    $signatureLines += '      cargo: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $person 'cargo'))
+                    $signatureLines += '      fecha: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $person 'fecha'))
+                    $signatureLines += '      firma: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $person 'firma'))
+                }
+            }
+            $rmd = Set-YamlBlock -Text $rmd -StartKey 'firmas' -NextKey 'control_cambios' -Lines $signatureLines
+        }
+        if ($metadata.PSObject.Properties.Name -contains 'control_cambios') {
+            $changeLines = @('control_cambios:')
+            foreach ($change in @($metadata.control_cambios)) {
+                if ($null -eq $change) { continue }
+                $changeLines += '  - version: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $change 'version'))
+                $changeLines += '    fecha: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $change 'fecha'))
+                $changeLines += '    autor: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $change 'autor'))
+                $changeLines += '    descripcion: ' + (ConvertTo-YamlQuoted (Get-MetadataProperty $change 'descripcion'))
+            }
+            $rmd = Set-YamlBlock -Text $rmd -StartKey 'control_cambios' -NextKey 'output' -Lines $changeLines
         }
     }
 

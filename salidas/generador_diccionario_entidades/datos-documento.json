@@ -1,0 +1,43 @@
+{
+  "title": "Documentación técnica del generador de diccionario de entidades",
+  "doc_code": "DOC-GDE-001",
+  "doc_type": "Documentación técnica",
+  "form_code": "DOC-001",
+  "version": "0.1",
+  "security_level": "Uso interno",
+  "institution": "INSTITUTO ECUATORIANO DE SEGURIDAD SOCIAL",
+  "direction": "Dirección Nacional de Tecnologías de la Información",
+  "subdirection": "Subdirección Nacional de Arquitectura y Soluciones",
+  "date": "21/08/2026",
+  "copyright_year": "2026",
+  "include_toc": true,
+  "include_definitions": true,
+  "include_background": true,
+  "include_purpose": true,
+  "include_responsibilities": true,
+  "include_legal_framework": true,
+  "include_risks": true,
+  "include_indicators": true,
+  "include_conclusions": true,
+  "include_recommendations": true,
+  "include_references": true,
+  "include_annexes": true,
+  "firmas": {
+    "elaborado": [
+      {
+        "nombre": "Borrador automatizado",
+        "cargo": "Documentación técnica",
+        "fecha": "21/08/2026",
+        "firma": "Validación pendiente"
+      }
+    ]
+  },
+  "control_cambios": [
+    {
+      "version": "0.1",
+      "fecha": "21/08/2026",
+      "autor": "Generación documental automatizada",
+      "descripcion": "Corte técnico del estado actual del proyecto en desarrollo"
+    }
+  ]
+}
