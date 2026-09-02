@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "request_id": "documento-ejemplo-001",
+  "operation": "generate",
+  "validation_mode": "standard",
+  "markdown": "# 1. ANTECEDENTES\n\nContexto del documento.\n\n# 2. PROPÓSITO\n\nPropósito del documento.\n\n# 3. OBJETIVO\n\nObjetivo principal.\n\n# 4. ALCANCE\n\nAlcance definido.\n\n# 5. DEFINICIONES, ABREVIATURAS Y ACRÓNIMOS\n\nDefiniciones aplicables.\n\n# 6. RESPONSABLES Y PARTES INTERESADAS\n\nResponsables institucionales.\n\n# 7. MARCO NORMATIVO Y DOCUMENTAL\n\nNormativa aplicable.\n\n# 8. DESARROLLO DEL DOCUMENTO\n\nContenido técnico.\n\n# 9. RIESGOS, RESTRICCIONES Y DEPENDENCIAS\n\nRiesgos identificados.\n\n# 10. INDICADORES Y CRITERIOS DE CUMPLIMIENTO\n\nCriterios definidos.\n\n# 11. CONCLUSIONES\n\nConclusiones del documento.\n\n# 12. RECOMENDACIONES\n\nRecomendaciones institucionales.\n\n# 13. REFERENCIAS\n\nReferencias utilizadas.\n\n# 14. ANEXOS\n\nAnexos aplicables.\n",
+  "metadata": {
+    "title": "Documento técnico de ejemplo",
+    "doc_code": "DOC-EJ-001",
+    "doc_type": "ESTÁNDAR",
+    "form_code": "FORM-EJ-001",
+    "version": "1.0",
+    "security_level": "Restringido",
+    "direction": "Dirección de I+D & Arquitectura",
+    "subdirection": "Subdirección Nacional de Arquitectura y Soluciones",
+    "date": "01/09/2026",
+    "copyright_year": "2026"
+  }
+}

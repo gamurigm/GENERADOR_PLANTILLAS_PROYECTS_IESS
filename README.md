@@ -1,73 +1,83 @@
 # Generador de documentación y DOCX IESS
 
-El proyecto ofrece dos fases: preparar documentación de un proyecto externo y convertir el Markdown revisado a DOCX institucional.
+Herramienta para analizar proyectos, validar documentación técnica en Markdown y generar documentos DOCX con la plantilla institucional del IESS.
 
-## Flujo recomendado
-
-1. Analizar el directorio del proyecto con `tools/analizador-proyecto-iess/analizar_proyecto_iess.ps1`.
-2. Entregar `prompt-generar-documentacion.md` y la información permitida del proyecto a la IA.
-3. Guardar el resultado como `documentacion.md` y revisarlo manualmente.
-4. Validarlo con `validar_markdown_iess.ps1`.
-5. Convertirlo a DOCX con el generador existente.
-
-El analizador no envía información a ninguna IA por sí mismo. Produce un inventario y un prompt para que el usuario controle qué contenido comparte.
-
-Convierte un archivo `.md` de cualquier proyecto en un `.docx` basado en la plantilla general IESS.
-
-## Estructura recomendada
+El flujo es controlado y reproducible:
 
 ```text
-MiSistema/
-├── mapa-arquitectura.md
-├── datos-documento.json
-└── salida/
+Proyecto → inventario y borrador → Markdown revisado → validación → DOCX IESS
 ```
 
-El Markdown contiene el contenido técnico. El JSON contiene los datos de portada y las secciones opcionales.
+El analizador no envía información a servicios de IA. Solo genera un inventario, un prompt y un esqueleto documental para que el equipo decida qué información comparte y revise el contenido antes de publicarlo.
 
-## Uso
+## Capacidades
 
-Desde la raíz de `Documentacion`:
+- Analiza la estructura de un proyecto excluyendo dependencias, artefactos, `.env`, llaves y certificados.
+- Valida las 14 secciones institucionales, marcadores pendientes y posibles secretos.
+- Genera portada, cabecera, firmas, control de cambios, tabla de contenido, tablas y estilos IESS.
+- Puede utilizarse por consola o como módulo embebido dentro del contenedor de otra aplicación.
+
+## Integración como módulo
+
+La opción recomendada es copiar el repositorio en la misma imagen Linux de la aplicación, por ejemplo en `/opt/iess-docs`, e invocar el wrapper como proceso hijo. No se inicia un servidor HTTP adicional.
+
+```text
+pwsh -NoLogo -NoProfile -NonInteractive \
+  -File /opt/iess-docs/tools/generador-docx-iess/iess-docx-wrapper.ps1 \
+  -RequestFile /app/var/iess/jobs/req-123/request.json \
+  -OutputDirectory /app/var/iess/jobs/req-123 \
+  -TimeoutSeconds 120
+```
+
+El contrato está definido en [request.schema.json](tools/generador-docx-iess/request.schema.json) y hay una solicitud funcional en [request.ejemplo.json](tools/generador-docx-iess/request.ejemplo.json).
+
+- `validate` revisa el Markdown y devuelve diagnósticos sin generar archivos.
+- `generate` valida y produce el DOCX.
+- `standard` permite advertencias; `strict` también las trata como error.
+- Toda respuesta se escribe como JSON en `stdout`.
+- Una generación correcta devuelve `artifact_id`, ruta, nombre, tamaño, tipo MIME, SHA-256 y duración.
+
+La aplicación consumidora administra autenticación, autorización, descarga y retención del DOCX. La ruta de salida debe proceder de configuración interna y no directamente de una petición de usuario.
+
+## Uso local
+
+Analizar un proyecto:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ".\tools\generador-docx-iess\generar_docx_desde_md_iess.ps1" `
-  -InputMarkdown ".\MiSistema\mapa-arquitectura.md" `
+pwsh -File .\tools\analizador-proyecto-iess\analizar_proyecto_iess.ps1 `
+  -ProjectPath "D:\Proyectos\MiSistema" `
+  -OutputDirectory "D:\Proyectos\MiSistema\documentacion-generada"
+```
+
+Validar y generar:
+
+```powershell
+pwsh -File .\tools\analizador-proyecto-iess\validar_markdown_iess.ps1 `
+  -InputMarkdown ".\MiSistema\documentacion.md" -Strict
+
+pwsh -File .\tools\generador-docx-iess\generar_docx_desde_md_iess.ps1 `
+  -InputMarkdown ".\MiSistema\documentacion.md" `
   -MetadataJson ".\MiSistema\datos-documento.json" `
-  -OutputDocx ".\MiSistema\salida\mapa-arquitectura.docx"
+  -OutputDocx ".\MiSistema\salida\documentacion.docx"
 ```
 
-`-MetadataJson` es opcional. Si se omite, se conservan los valores de la plantilla general. El Markdown puede incluir front matter YAML; el generador lo retira para evitar duplicarlo dentro del RMarkdown.
+`MetadataJson` define portada, códigos, versión, nivel de seguridad, responsables, firmas, control de cambios y secciones opcionales. Consulte [datos-documento.ejemplo.json](tools/generador-docx-iess/datos-documento.ejemplo.json).
 
-## Qué conserva
+## Seguridad y límites
 
-- Portada y metadatos institucionales.
-- Tabla de contenido.
-- Control de cambios, firmas y secciones generales de la plantilla.
-- Referencia visual `referencia_estilo_iess.docx`.
-- Tablas y títulos Markdown dentro de la sección de desarrollo.
-- Normalización final de colores y estilos mediante `patch_docx_iess_styles.ps1`.
+- El wrapper acepta Markdown de hasta 5 MiB y aplica un timeout de 120 segundos por defecto.
+- Se rechazan bloques ejecutables de knitr como `{r}`, `{bash}` o `{python}`, expresiones R inline, recursos externos y rutas de imagen inseguras.
+- Los temporales y documentos parciales se eliminan al fallar o agotar el tiempo.
+- Mermaid se conserva como código; para incluir el diagrama gráfico debe convertirse previamente a PNG o SVG.
+- La versión inicial recibe Markdown y JSON; el análisis de proyectos continúa como una operación CLI separada.
 
-Los bloques Mermaid se conservan como bloques de código en el DOCX. Para diagramas gráficos se deben exportar previamente a PNG/SVG e insertarlos en el Markdown o ampliar el generador con un renderizador Mermaid.
+## Dependencias y pruebas
 
-## JSON mínimo
+La imagen o estación de trabajo necesita PowerShell 7, R, Pandoc y los paquetes R `rmarkdown`, `officedown`, `officer` y `flextable`. Las versiones verificadas están en [runtime-versions.json](tools/generador-docx-iess/runtime-versions.json).
 
-```json
-{
-  "title": "Mapa de arquitectura tecnológica de MiSistema",
-  "doc_code": "ARQ-MIS-001",
-  "doc_type": "Documento de arquitectura",
-  "form_code": "ARQ-001",
-  "version": "1.0",
-  "security_level": "Restringido",
-  "direction": "Dirección Nacional de Tecnologías de la Información",
-  "subdirection": "Subdirección Nacional de Arquitectura y Soluciones",
-  "date": "20/08/2026",
-  "copyright_year": "2026",
-  "include_risks": true,
-  "include_indicators": false
-}
+```powershell
+pwsh -NoLogo -NoProfile -File .\tools\generador-docx-iess\probar_wrapper_iess.ps1
+pwsh -NoLogo -NoProfile -File .\tools\generador-docx-iess\probar_wrapper_iess.ps1 -IncludeRender
 ```
 
-## Dependencias
-
-Requiere `Rscript` con los paquetes `rmarkdown`, `officedown`, `officer` y `flextable`. El script reutiliza la plantilla y el normalizador existentes en `DocumentaciónIESS` y `tools`.
+La segunda prueba ejecuta el renderizado completo y verifica el DOCX, checksum, cabecera XML, timeout y limpieza. La documentación detallada del contrato y los códigos de salida está en [tools/generador-docx-iess/README.md](tools/generador-docx-iess/README.md).

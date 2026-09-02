@@ -16,6 +16,7 @@ $toolDir = Split-Path -Parent $PSScriptRoot
 $repoRoot = Split-Path -Parent $toolDir
 $templateRmd = Join-Path $repoRoot 'plantilla_general_iess.Rmd'
 $referenceDocx = Join-Path $repoRoot 'referencia_estilo_iess.docx'
+$validationModule = Join-Path $PSScriptRoot 'IessDocumentValidation.psm1'
 $referenceFallback = Get-ChildItem -Path $repoRoot -Directory -Filter 'Documentaci*IESS' -ErrorAction SilentlyContinue |
     ForEach-Object { Join-Path $_.FullName 'referencia_estilo_iess.docx' } |
     Where-Object { Test-Path -LiteralPath $_ } |
@@ -28,6 +29,11 @@ $patcher = Join-Path $toolDir 'patch_docx_iess_styles.ps1'
 if (-not (Test-Path -LiteralPath $templateRmd)) { throw "No se encontró la plantilla RMarkdown: $templateRmd" }
 if (-not (Test-Path -LiteralPath $referenceDocx)) { throw "No se encontró el documento de referencia: $referenceDocx" }
 if (-not (Test-Path -LiteralPath $patcher)) { throw "No se encontró el normalizador DOCX: $patcher" }
+if (-not (Test-Path -LiteralPath $validationModule)) { throw "No se encontró el módulo de validación: $validationModule" }
+if (-not (Get-Command Rscript -CommandType Application -ErrorAction SilentlyContinue)) {
+    throw 'No se encontró Rscript en PATH.'
+}
+Import-Module $validationModule -Force
 
 $inputPath = (Resolve-Path -LiteralPath $InputMarkdown).Path
 $outputPath = if ([IO.Path]::IsPathRooted($OutputDocx)) {
@@ -52,7 +58,7 @@ function Set-YamlScalar {
     if ($Boolean) {
         $rendered = if ([bool]$Value) { 'true' } else { 'false' }
     } else {
-        $rendered = '"' + ([string]$Value).Replace('\', '\\').Replace('"', '\"') + '"'
+        $rendered = '"' + ([string]$Value).Replace('\', '\\').Replace('"', '\"').Replace("`r", '').Replace("`n", ' ') + '"'
     }
     $pattern = '(?m)^' + [regex]::Escape($Key) + ':.*$'
     return [regex]::Replace($Text, $pattern, {
@@ -90,6 +96,10 @@ try {
     Copy-Item -LiteralPath $referenceDocx -Destination (Join-Path $temp 'referencia_estilo_iess.docx')
 
     $body = Get-Content -Raw -Encoding utf8 -LiteralPath $inputPath
+    $safetyDiagnostics = @(Test-IessMarkdownSafety -Content $body | Where-Object severity -eq 'error')
+    if ($safetyDiagnostics.Count -gt 0) {
+        throw ('El Markdown contiene elementos no permitidos: ' + (($safetyDiagnostics | ForEach-Object message) -join ' '))
+    }
     # Permite que el Markdown tenga front matter propio sin duplicarlo dentro del Rmd.
     $body = [regex]::Replace($body, '(?s)^---\r?\n.*?\r?\n---\r?\n', '')
     $body = $body.Trim()
@@ -225,17 +235,16 @@ try {
     }
 
     # Construir argumentos para el patcher
-    $patcherArgs = @(
-        '-InputDocx', (Join-Path $temp 'rendered.docx'),
-        '-OutputDocx', $outputPath
-    )
+    $patcherArgs = @{
+        InputDocx = (Join-Path $temp 'rendered.docx')
+        OutputDocx = $outputPath
+    }
     foreach ($ha in $headerArgs.GetEnumerator()) {
-        $patcherArgs += "-$($ha.Key)"
-        $patcherArgs += $ha.Value
+        $patcherArgs[$ha.Key] = $ha.Value
     }
 
-    & powershell -ExecutionPolicy Bypass -File $patcher @patcherArgs
-    if ($LASTEXITCODE -ne 0) { throw 'La normalización de estilos del DOCX falló.' }
+    & $patcher @patcherArgs
+    if (-not $?) { throw 'La normalización de estilos del DOCX falló.' }
 
     Write-Output "Documento creado: $outputPath"
     if ($KeepIntermediate) {

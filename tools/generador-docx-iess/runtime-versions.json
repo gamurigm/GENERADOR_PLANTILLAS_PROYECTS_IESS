@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "target_platform": "linux-amd64",
+  "validation_host": "windows-amd64",
+  "tested_with": {
+    "powershell": "7.6.5",
+    "r": "4.6.1",
+    "pandoc": "3.10.2",
+    "r_packages": {
+      "rmarkdown": "2.31",
+      "officedown": "0.4.1",
+      "officer": "0.7.6",
+      "flextable": "0.10.0"
+    }
+  },
+  "policy": "La imagen de la aplicación debe fijar estas versiones o versiones previamente certificadas por el equipo responsable."
+}

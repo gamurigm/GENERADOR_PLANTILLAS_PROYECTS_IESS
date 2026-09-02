@@ -11,13 +11,15 @@ param(
     [string]$Version
 )
 
+$ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $work = Join-Path ([IO.Path]::GetTempPath()) ("iess-docx-style-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $work | Out-Null
 
 try {
     [IO.Compression.ZipFile]::ExtractToDirectory((Resolve-Path -LiteralPath $InputDocx).Path, $work)
-    $stylesPath = Join-Path $work 'word\styles.xml'
+    $wordDirectory = Join-Path $work 'word'
+    $stylesPath = Join-Path $wordDirectory 'styles.xml'
     $styles = [IO.File]::ReadAllText($stylesPath)
 
     foreach ($pair in @{
@@ -48,7 +50,7 @@ try {
     }
 
     [IO.File]::WriteAllText($stylesPath, $styles, [Text.UTF8Encoding]::new($false))
-    $documentPath = Join-Path $work 'word\document.xml'
+    $documentPath = Join-Path $wordDirectory 'document.xml'
     $document = [IO.File]::ReadAllText($documentPath)
     $document = [regex]::Replace($document, '&lt;U\+([0-9A-Fa-f]{4,6})&gt;', {
         param($m)
@@ -85,11 +87,12 @@ try {
     if ($Version)      { $headerPlaceholders['{{VERSION}}']      = $Version }
 
     if ($headerPlaceholders.Count -gt 0) {
-        $headerFiles = Get-ChildItem -Path (Join-Path $work 'word') -Filter 'header*.xml' -File -ErrorAction SilentlyContinue
+        $headerFiles = Get-ChildItem -Path $wordDirectory -Filter 'header*.xml' -File -ErrorAction SilentlyContinue
         foreach ($hf in $headerFiles) {
             $headerXml = [IO.File]::ReadAllText($hf.FullName)
             foreach ($ph in $headerPlaceholders.GetEnumerator()) {
-                $headerXml = $headerXml.Replace($ph.Key, $ph.Value)
+                $escapedValue = [Security.SecurityElement]::Escape([string]$ph.Value)
+                $headerXml = $headerXml.Replace($ph.Key, $escapedValue)
             }
             [IO.File]::WriteAllText($hf.FullName, $headerXml, [Text.UTF8Encoding]::new($false))
         }

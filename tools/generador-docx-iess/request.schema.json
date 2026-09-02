@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://iess.gob.ec/schemas/iess-docx-request-1.0.json",
+  "title": "Solicitud del módulo documental IESS",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "operation", "markdown"],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "operation": {
+      "type": "string",
+      "enum": ["validate", "generate"]
+    },
+    "validation_mode": {
+      "type": "string",
+      "enum": ["standard", "strict"],
+      "default": "standard"
+    },
+    "markdown": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 5242880
+    },
+    "metadata": {
+      "$ref": "#/definitions/metadata"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": { "const": "generate" }
+        }
+      },
+      "then": {
+        "required": ["metadata"]
+      }
+    }
+  ],
+  "definitions": {
+    "singleLine": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 250,
+      "pattern": "^[^\\r\\n]*$"
+    },
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nombre", "cargo"],
+      "properties": {
+        "nombre": { "$ref": "#/definitions/singleLine" },
+        "cargo": { "$ref": "#/definitions/singleLine" },
+        "fecha": { "type": "string", "maxLength": 20, "pattern": "^[^\\r\\n]*$" },
+        "firma": { "type": "string", "maxLength": 250, "pattern": "^[^\\r\\n]*$" }
+      }
+    },
+    "people": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/definitions/person" }
+    },
+    "firmas": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "elaborado": { "$ref": "#/definitions/people" },
+        "colaborado": { "$ref": "#/definitions/people" },
+        "revisado": { "$ref": "#/definitions/people" },
+        "aprobado": { "$ref": "#/definitions/people" }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "fecha", "autor", "descripcion"],
+      "properties": {
+        "version": { "$ref": "#/definitions/singleLine" },
+        "fecha": { "type": "string", "minLength": 1, "maxLength": 20, "pattern": "^[^\\r\\n]*$" },
+        "autor": { "$ref": "#/definitions/singleLine" },
+        "descripcion": { "type": "string", "minLength": 1, "maxLength": 1000, "pattern": "^[^\\r\\n]*$" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "doc_code", "form_code"],
+      "properties": {
+        "title": { "$ref": "#/definitions/singleLine" },
+        "doc_code": { "$ref": "#/definitions/singleLine" },
+        "doc_type": { "$ref": "#/definitions/singleLine" },
+        "form_code": { "$ref": "#/definitions/singleLine" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 30, "pattern": "^[^\\r\\n]*$" },
+        "security_level": { "$ref": "#/definitions/singleLine" },
+        "institution": { "$ref": "#/definitions/singleLine" },
+        "direction": { "$ref": "#/definitions/singleLine" },
+        "subdirection": { "$ref": "#/definitions/singleLine" },
+        "date": { "type": "string", "pattern": "^\\d{2}/\\d{2}/\\d{4}$" },
+        "copyright_year": { "type": "string", "pattern": "^\\d{4}$" },
+        "include_toc": { "type": "boolean" },
+        "include_definitions": { "type": "boolean" },
+        "include_background": { "type": "boolean" },
+        "include_purpose": { "type": "boolean" },
+        "include_responsibilities": { "type": "boolean" },
+        "include_legal_framework": { "type": "boolean" },
+        "include_risks": { "type": "boolean" },
+        "include_indicators": { "type": "boolean" },
+        "include_conclusions": { "type": "boolean" },
+        "include_recommendations": { "type": "boolean" },
+        "include_references": { "type": "boolean" },
+        "include_annexes": { "type": "boolean" },
+        "firmas": { "$ref": "#/definitions/firmas" },
+        "control_cambios": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/definitions/change" }
+        }
+      }
+    }
+  }
+}
