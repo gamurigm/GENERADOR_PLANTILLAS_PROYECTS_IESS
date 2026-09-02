@@ -1,6 +1,14 @@
 param(
     [Parameter(Mandatory=$true)][string]$InputDocx,
-    [Parameter(Mandatory=$true)][string]$OutputDocx
+    [Parameter(Mandatory=$true)][string]$OutputDocx,
+
+    # Campos opcionales para reemplazar placeholders de la cabecera institucional
+    [string]$Direction,
+    [string]$Subdirection,
+    [string]$DocType,
+    [string]$FormCode,
+    [string]$DocDate,
+    [string]$Version
 )
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -57,7 +65,36 @@ try {
     }.GetEnumerator()) {
         $document = $document.Replace($replacement.Key, $replacement.Value)
     }
+
+    # Las tablas Markdown que Pandoc crea directamente pueden quedar con
+    # ancho automático. La cabecera ocupa el 100% del ancho útil, por lo que
+    # normalizamos también esas tablas a la misma extensión y a layout fijo.
+    $document = $document.Replace(
+        '<w:tblW w:type="auto" w:w="0"/>',
+        '<w:tblW w:type="pct" w:w="5000"/><w:tblLayout w:type="fixed"/>'
+    )
     [IO.File]::WriteAllText($documentPath, $document, [Text.UTF8Encoding]::new($false))
+
+    # --- Reemplazar placeholders de la cabecera institucional en header*.xml ---
+    $headerPlaceholders = @{}
+    if ($Direction)    { $headerPlaceholders['{{DIRECTION}}']    = $Direction }
+    if ($Subdirection) { $headerPlaceholders['{{SUBDIRECTION}}'] = $Subdirection }
+    if ($DocType)      { $headerPlaceholders['{{DOC_TYPE}}']     = $DocType }
+    if ($FormCode)     { $headerPlaceholders['{{FORM_CODE}}']    = $FormCode }
+    if ($DocDate)      { $headerPlaceholders['{{DATE}}']         = $DocDate }
+    if ($Version)      { $headerPlaceholders['{{VERSION}}']      = $Version }
+
+    if ($headerPlaceholders.Count -gt 0) {
+        $headerFiles = Get-ChildItem -Path (Join-Path $work 'word') -Filter 'header*.xml' -File -ErrorAction SilentlyContinue
+        foreach ($hf in $headerFiles) {
+            $headerXml = [IO.File]::ReadAllText($hf.FullName)
+            foreach ($ph in $headerPlaceholders.GetEnumerator()) {
+                $headerXml = $headerXml.Replace($ph.Key, $ph.Value)
+            }
+            [IO.File]::WriteAllText($hf.FullName, $headerXml, [Text.UTF8Encoding]::new($false))
+        }
+    }
+
     if (Test-Path -LiteralPath $OutputDocx) { Remove-Item -LiteralPath $OutputDocx -Force }
     $archive = [IO.Compression.ZipFile]::Open($OutputDocx, [IO.Compression.ZipArchiveMode]::Create)
     try {

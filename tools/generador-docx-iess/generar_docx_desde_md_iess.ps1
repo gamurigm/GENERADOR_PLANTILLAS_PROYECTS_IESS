@@ -16,6 +16,13 @@ $toolDir = Split-Path -Parent $PSScriptRoot
 $repoRoot = Split-Path -Parent $toolDir
 $templateRmd = Join-Path $repoRoot 'plantilla_general_iess.Rmd'
 $referenceDocx = Join-Path $repoRoot 'referencia_estilo_iess.docx'
+$referenceFallback = Get-ChildItem -Path $repoRoot -Directory -Filter 'Documentaci*IESS' -ErrorAction SilentlyContinue |
+    ForEach-Object { Join-Path $_.FullName 'referencia_estilo_iess.docx' } |
+    Where-Object { Test-Path -LiteralPath $_ } |
+    Select-Object -First 1
+if (-not (Test-Path -LiteralPath $referenceDocx) -and $referenceFallback) {
+    $referenceDocx = $referenceFallback
+}
 $patcher = Join-Path $toolDir 'patch_docx_iess_styles.ps1'
 
 if (-not (Test-Path -LiteralPath $templateRmd)) { throw "No se encontró la plantilla RMarkdown: $templateRmd" }
@@ -155,6 +162,24 @@ try {
         }
     }
 
+    # Valores por defecto de la cabecera. La fecha se calcula en cada
+    # generación para que el documento siempre use la fecha actual.
+    $defaults = @{
+        # Construido con Unicode para funcionar también con Windows PowerShell 5.1.
+        'doc_type' = ('EST' + [char]0x00C1 + 'NDAR')
+        'version'  = '1.0'
+        'date'     = (Get-Date -Format 'dd/MM/yyyy')
+    }
+    foreach ($key in $defaults.Keys) {
+        $current = $null
+        if ($metadata -and $metadata.PSObject.Properties.Name -contains $key) {
+            $current = [string]$metadata.$key
+        }
+        if (-not $current -or -not $current.Trim() -or $current -match '^\[') {
+            $rmd = Set-YamlScalar -Text $rmd -Key $key -Value $defaults[$key]
+        }
+    }
+
     [IO.File]::WriteAllText((Join-Path $temp 'plantilla_general_iess.Rmd'), $rmd, [Text.UTF8Encoding]::new($false))
 
     Push-Location $temp
@@ -162,7 +187,54 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'La conversión R Markdown falló.' }
     Pop-Location
 
-    & powershell -ExecutionPolicy Bypass -File $patcher -InputDocx (Join-Path $temp 'rendered.docx') -OutputDocx $outputPath
+    # --- Extraer metadatos para la cabecera institucional ---
+    # Se leen del JSON si están disponibles, o del YAML del RMD generado
+    $headerArgs = @{}
+
+    $headerFields = @{
+        'Direction'    = 'direction'
+        'Subdirection' = 'subdirection'
+        'DocType'      = 'doc_type'
+        'FormCode'     = 'form_code'
+        'DocDate'      = 'date'
+        'Version'      = 'version'
+    }
+
+    foreach ($entry in $headerFields.GetEnumerator()) {
+        $paramName = $entry.Key
+        $jsonKey   = $entry.Value
+        $val = $null
+
+        # Primero intentar desde el JSON de metadatos
+        if ($metadata -and $metadata.PSObject.Properties.Name -contains $jsonKey) {
+            $val = [string]$metadata.$jsonKey
+        }
+
+        # Si no viene del JSON, leer del RMD ya procesado
+        if (-not $val -or -not $val.Trim()) {
+            $rmdFinal = [IO.File]::ReadAllText((Join-Path $temp 'plantilla_general_iess.Rmd'))
+            $yamlMatch = [regex]::Match($rmdFinal, '(?m)^' + [regex]::Escape($jsonKey) + ':\s*"([^"]*)"')
+            if ($yamlMatch.Success) {
+                $val = $yamlMatch.Groups[1].Value
+            }
+        }
+
+        if ($val -and $val.Trim() -and $val -notmatch '^\[') {
+            $headerArgs[$paramName] = $val
+        }
+    }
+
+    # Construir argumentos para el patcher
+    $patcherArgs = @(
+        '-InputDocx', (Join-Path $temp 'rendered.docx'),
+        '-OutputDocx', $outputPath
+    )
+    foreach ($ha in $headerArgs.GetEnumerator()) {
+        $patcherArgs += "-$($ha.Key)"
+        $patcherArgs += $ha.Value
+    }
+
+    & powershell -ExecutionPolicy Bypass -File $patcher @patcherArgs
     if ($LASTEXITCODE -ne 0) { throw 'La normalización de estilos del DOCX falló.' }
 
     Write-Output "Documento creado: $outputPath"

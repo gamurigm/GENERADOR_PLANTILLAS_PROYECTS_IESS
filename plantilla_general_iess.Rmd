@@ -1,14 +1,14 @@
 ---
 title: "[TÍTULO DEL DOCUMENTO]"
 doc_code: "[CÓDIGO DOCUMENTAL]"
-doc_type: "[TIPO DE DOCUMENTO]"
+doc_type: "ESTÁNDAR"
 form_code: "[CÓDIGO DEL FORMULARIO]"
-version: "[VERSIÓN]"
+version: "1.0"
 security_level: "[NIVEL DE SEGURIDAD]"
 institution: "INSTITUTO ECUATORIANO DE SEGURIDAD SOCIAL"
-direction: "[DIRECCIÓN / UNIDAD RESPONSABLE]"
-subdirection: "[SUBDIRECCIÓN / ÁREA RESPONSABLE]"
-date: "[DD/MM/AAAA]"
+direction: "DIRECCIÓN NACIONAL DE TECNOLOGÍAS DE LA INFORMACIÓN"
+subdirection: "SUBDIRECCION NACIONAL DE ARQUITECTURA Y SOLUCIONES"
+date: "[FECHA ACTUAL]"
 copyright_year: "[AÑO]"
 include_toc: true
 include_definitions: true
@@ -77,13 +77,27 @@ estilo_iess <- function(ft, header_fill = "#003366") {
     font(fontname = "Calibri", part = "all") %>%
     align(align = "left", part = "all") %>%
     valign(valign = "center", part = "all") %>%
-    autofit()
+    autofit() %>%
+    # La cabecera usa el 100% del ancho útil de la página; todas las
+    # tablas del documento deben conservar esa misma alineación y extensión.
+    set_table_properties(layout = "fixed", width = 1, align = "center")
   ft
 }
 
 valor <- function(x, defecto = "[PENDIENTE DE COMPLETAR]") {
   if (is.null(x) || length(x) == 0 || is.na(x) || !nzchar(trimws(as.character(x)))) defecto else as.character(x)
 }
+
+# Valores institucionales por defecto. La fecha se calcula al momento de
+# generar el documento para no dejar una fecha fija en la plantilla.
+es_marcador <- function(x) {
+  is.null(x) || length(x) == 0 || is.na(x) ||
+    !nzchar(trimws(as.character(x))) || grepl("^\\[", trimws(as.character(x)))
+}
+
+if (es_marcador(meta$doc_type)) meta$doc_type <- "ESTÁNDAR"
+if (es_marcador(meta$version)) meta$version <- "1.0"
+if (es_marcador(meta$date)) meta$date <- format(Sys.Date(), "%d/%m/%Y")
 
 tabla_firmas <- function(firmas) {
   roles <- list(

@@ -26,6 +26,8 @@ powershell -ExecutionPolicy Bypass -File ".\tools\generador-docx-iess\generar_do
 
 `-MetadataJson` es opcional. Si se omite, se conservan los valores de la plantilla general. El Markdown puede incluir front matter YAML; el generador lo retira para evitar duplicarlo dentro del RMarkdown.
 
+Si el JSON no define estos campos, se aplican automáticamente los valores por defecto: tipo `ESTÁNDAR`, versión `1.0` y fecha del día de generación. Los valores explícitos del JSON tienen prioridad.
+
 ## Qué conserva
 
 - Portada y metadatos institucionales.
